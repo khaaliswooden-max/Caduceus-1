@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CADUCEUS 1 — Interplanetary Bundle Fabric · caduceus-bench v1.2.1</title>
+<meta name="description" content="Compliance-graded delay-tolerant bundle fabric for interplanetary authority propagation. Falsification-first methodology, cryptographically committed benchmark, Aletheia provenance, Civium gating.">
+
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23000'/%3E%3Cline x1='32' y1='8' x2='32' y2='56' stroke='%23eaeaea' stroke-width='2'/%3E%3Cpath d='M20 16 Q32 22 44 16 Q32 28 20 32 Q32 38 44 32 Q32 44 20 48' fill='none' stroke='%236fc7e3' stroke-width='1.6'/%3E%3Cpath d='M44 16 Q32 22 20 16 Q32 28 44 32 Q32 38 20 32 Q32 44 44 48' fill='none' stroke='%236ee29a' stroke-width='1.6'/%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500;6..96,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg:        #000;
+    --bg-soft:   #0a0a0a;
+    --line:      #1f1f1f;
+    --line-soft: #141414;
+    --ink:       #eaeaea;
+    --ink-dim:   #9a9a9a;
+    --ink-faint: #5a5a5a;
+    --accent:    #6fc7e3;
+    --warn:      #f0a832;
+    --crit:      #e26666;
+    --good:      #6ee29a;
+    --serif: "Bodoni Moda", "Didot", "Bodoni 72", "Playfair Display", Georgia, serif;
+    --mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  a {
+    color: var(--ink);
+    text-decoration: none;
+    border-bottom: 1px solid var(--line);
+    transition: border-color .15s, color .15s;
+  }
+  a:hover { color: #fff; border-bottom-color: var(--ink-dim); }
+  code, pre, .mono { font-family: var(--mono); }
+  pre {
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    padding: 18px 20px;
+    overflow-x: auto;
+    font-size: 12.5px;
+    color: var(--ink);
+    line-height: 1.6;
+  }
+  code {
+    background: var(--bg-soft);
+    padding: 1px 6px;
+    font-size: 0.92em;
+    color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 0 40px; }
+
+  /* ========== TOP BAR ========== */
+  header.top {
+    border-bottom: 1px solid var(--line);
+    padding: 18px 0;
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(0,0,0,0.92);
+    backdrop-filter: blur(8px);
+  }
+  header.top .row {
+    display: flex; align-items: center; gap: 32px;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+  .brand {
+    font-family: var(--mono);
+    color: var(--ink);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .brand .sub {
+    color: var(--ink-dim);
+    font-weight: 400;
+    margin-left: 8px;
+    text-transform: lowercase;
+    letter-spacing: 0.06em;
+  }
+  nav.primary {
+    display: flex; gap: 28px;
+    margin: 0 auto;
+  }
+  nav.primary a {
+    color: var(--ink-dim);
+    border: none;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  nav.primary a:hover { color: var(--ink); }
+  .meta-right {
+    color: var(--ink-dim);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+  .meta-right b { color: var(--ink); font-weight: 500; }
+
+  /* ========== HERO ========== */
+  section.hero { padding: 96px 0 72px; border-bottom: 1px solid var(--line); }
+  .pill-row {
+    display: flex; align-items: center; gap: 18px;
+    margin-bottom: 48px;
+    flex-wrap: wrap;
+  }
+  .pill {
+    display: inline-flex; align-items: center; gap: 10px;
+    border: 1px solid var(--line);
+    padding: 7px 14px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--ink);
+  }
+  .pill .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--warn);
+    box-shadow: 0 0 10px var(--warn);
+  }
+  .pill-bare {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--ink-dim);
+  }
+
+  h1.display {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(72px, 14vw, 200px);
+    line-height: 0.92;
+    letter-spacing: -0.02em;
+    margin: 0 0 48px;
+    color: var(--ink);
+    text-shadow: 0 0 32px rgba(255,255,255,0.18), 0 0 80px rgba(255,255,255,0.06);
+  }
+
+  .lede-serif {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(24px, 3.4vw, 38px);
+    line-height: 1.25;
+    color: var(--ink);
+    max-width: 900px;
+    margin: 0 0 40px;
+    letter-spacing: -0.005em;
+  }
+
+  .lede-mono {
+    font-family: var(--mono);
+    color: var(--ink-dim);
+    font-size: 14.5px;
+    line-height: 1.7;
+    max-width: 760px;
+    margin: 0;
+  }
+  .lede-mono b { color: var(--ink); font-weight: 500; }
+
+  /* ========== SECTION CHROME ========== */
+  section { padding: 88px 0; border-bottom: 1px solid var(--line); }
+  section:last-of-type { border-bottom: none; }
+  .section-head {
+    display: flex; align-items: baseline; gap: 24px;
+    margin-bottom: 40px;
+    border-bottom: 1px solid var(--line-soft);
+    padding-bottom: 18px;
+  }
+  .section-num {
+    font-family: var(--mono);
+    color: var(--ink-faint);
+    font-size: 12px;
+    letter-spacing: 0.16em;
+  }
+  .section-kicker {
+    font-family: var(--mono);
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-size: 12px;
+  }
+  h2.section-title {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(34px, 5.5vw, 64px);
+    line-height: 1.05;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    margin: 0 0 28px;
+    max-width: 950px;
+  }
+  h2.section-title em { font-style: italic; color: var(--ink); }
+  p.body {
+    font-family: var(--mono);
+    color: var(--ink-dim);
+    font-size: 14px;
+    line-height: 1.75;
+    max-width: 720px;
+  }
+  p.body b { color: var(--ink); font-weight: 500; }
+
+  /* ========== COMPONENT GRID ========== */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin-top: 40px;
+  }
+  .grid .cell {
+    background: var(--bg);
+    padding: 28px 26px;
+  }
+  .cell-name {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    margin-bottom: 14px;
+  }
+  .cell-title {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 26px;
+    color: var(--ink);
+    margin: 0 0 12px;
+    line-height: 1.1;
+  }
+  .cell-desc {
+    font-family: var(--mono);
+    color: var(--ink-dim);
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 0 0 18px;
+  }
+  .marker {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+  .marker .m-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .marker.verified { color: var(--good); }
+  .marker.verified .m-dot { background: var(--good); }
+  .marker.plausible { color: var(--warn); }
+  .marker.plausible .m-dot { background: var(--warn); }
+  .marker.spec { color: var(--crit); }
+  .marker.spec .m-dot { background: var(--crit); }
+
+  /* ========== PRINCIPLES ========== */
+  .principles {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0;
+    border: 1px solid var(--line);
+    margin-top: 36px;
+  }
+  .principle {
+    padding: 36px 32px;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .principle:nth-child(2n) { border-right: none; }
+  .principle:nth-last-child(-n+2) { border-bottom: none; }
+  .principle .n {
+    font-family: var(--mono);
+    color: var(--ink-faint);
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    margin-bottom: 16px;
+  }
+  .principle h3 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 28px;
+    line-height: 1.15;
+    color: var(--ink);
+    margin: 0 0 14px;
+    font-style: italic;
+  }
+  .principle p {
+    font-family: var(--mono);
+    color: var(--ink-dim);
+    font-size: 13.5px;
+    line-height: 1.7;
+    margin: 0;
+  }
+
+  /* ========== BLUEPRINT FLOW ========== */
+  .flow {
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    padding: 32px 36px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-dim);
+    line-height: 1.75;
+    overflow-x: auto;
+    white-space: pre;
+    margin-top: 40px;
+  }
+  /* ===== BLUEPRINT DRAWINGS ===== */
+  .drawings { margin-top: 40px; }
+  .drawing {
+    border: 1px solid var(--line);
+    background: var(--bg-soft);
+    margin: 0 0 36px;
+  }
+  .drawing-head {
+    display: flex; align-items: baseline; gap: 22px;
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--ink-dim);
+    flex-wrap: wrap;
+  }
+  .drawing-head .dwg { color: var(--ink); }
+  .drawing-head .sep { color: var(--ink-faint); }
+  .drawing-head .view {
+    margin-left: auto;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+    color: var(--ink);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .drawing img {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: #0d2b4a;
+  }
+  .drawing-foot {
+    padding: 14px 22px;
+    border-top: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-dim);
+    line-height: 1.65;
+  }
+  .drawing-foot a { color: var(--ink); border-bottom-color: var(--line); }
+  .drawing-foot a:hover { color: #fff; border-bottom-color: var(--ink-dim); }
+  .flow .hl { color: var(--ink); }
+  .flow .accent { color: var(--accent); }
+  .flow .good { color: var(--good); }
+
+  .layer-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin-top: 32px;
+  }
+  .layer-strip .layer {
+    background: var(--bg);
+    padding: 22px 24px;
+  }
+  .layer .ord {
+    font-family: var(--mono);
+    color: var(--ink-faint);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    margin-bottom: 12px;
+  }
+  .layer .kind {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-style: italic;
+    color: var(--ink);
+    font-size: 22px;
+    margin-bottom: 6px;
+  }
+  .layer .what {
+    font-family: var(--mono);
+    color: var(--ink-dim);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  /* ========== TABLES ========== */
+  .table-wrap { border: 1px solid var(--line); margin-top: 32px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+  th, td {
+    text-align: left;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  th {
+    font-size: 11px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-weight: 500;
+    background: var(--bg-soft);
+  }
+  td.k {
+    color: var(--ink-dim);
+    width: 28%;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 11.5px;
+  }
+  td.v { color: var(--ink); }
+  td.hash {
+    font-size: 12px;
+    word-break: break-all;
+    color: var(--ink);
+  }
+
+  /* ========== STATUS TABLE BADGES ========== */
+  .stat {
+    display: inline-block;
+    padding: 3px 10px;
+    border: 1px solid;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .stat.pass { color: var(--good); border-color: var(--good); }
+  .stat.caveat { color: var(--warn); border-color: var(--warn); }
+  .stat.plan { color: var(--accent); border-color: var(--accent); }
+
+  /* ========== VERIFY BLOCK ========== */
+  .verify-head {
+    font-family: var(--mono);
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-size: 12px;
+    margin-top: 36px;
+    margin-bottom: 14px;
+  }
+
+  /* ========== FOOTER ========== */
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 56px 0 96px;
+  }
+  footer .crest {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 22px;
+    color: var(--ink);
+    margin-bottom: 16px;
+  }
+  footer p {
+    font-family: var(--mono);
+    color: var(--ink-dim);
+    font-size: 12.5px;
+    line-height: 1.75;
+    margin: 6px 0;
+    max-width: 760px;
+  }
+  footer .footer-links {
+    margin-top: 22px;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+  }
+  footer .footer-links a {
+    color: var(--ink-dim);
+    border: none;
+    margin-right: 22px;
+  }
+  footer .footer-links a:hover { color: var(--ink); }
+  footer .footer-links a::after {
+    content: " →";
+    color: var(--ink-faint);
+  }
+
+  /* ========== MOBILE ========== */
+  @media (max-width: 900px) {
+    .wrap { padding: 0 22px; }
+    header.top .row { gap: 16px; flex-wrap: wrap; }
+    nav.primary { gap: 14px; margin: 0; width: 100%; order: 3; overflow-x: auto; }
+    nav.primary a { font-size: 11px; letter-spacing: 0.14em; }
+    .meta-right { font-size: 11px; }
+    h1.display { font-size: 64px; }
+    .lede-serif { font-size: 22px; }
+    section { padding: 60px 0; }
+    section.hero { padding: 56px 0 48px; }
+    .grid, .layer-strip { grid-template-columns: 1fr; }
+    .principles { grid-template-columns: 1fr; }
+    .principle { border-right: none; border-bottom: 1px solid var(--line); }
+    .principle:last-child { border-bottom: none; }
+    td.k { width: 38%; }
+    .section-head { flex-wrap: wrap; gap: 10px; }
+    h2.section-title { font-size: 32px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ========== TOP BAR ========== -->
+<header class="top">
+  <div class="wrap row">
+    <div class="brand">CADUCEUS 1 <span class="sub">caduceus-bench</span></div>
+    <nav class="primary">
+      <a href="#fabric">The Fabric</a>
+      <a href="#principles">Principles</a>
+      <a href="#blueprint">Blueprint</a>
+      <a href="#provenance">Provenance</a>
+      <a href="#status">Status</a>
+    </nav>
+    <div class="meta-right">ledger <b>0004</b> &middot; <b>bench v1.2.1</b></div>
+  </div>
+</header>
+
+<!-- ========== HERO ========== -->
+<section class="hero">
+  <div class="wrap">
+    <div class="pill-row">
+      <span class="pill"><span class="dot"></span>BENCH v1.2.1 LOCKED &middot; LEDGER #0004 COMMIT PENDING</span>
+      <span class="pill-bare">VISIONBLOX VBX-CADUCEUS &middot; ZUUP INNOVATION LAB</span>
+    </div>
+
+    <h1 class="display">CADUCEUS 1</h1>
+
+    <p class="lede-serif">
+      Compliance-graded authority propagation for an interplanetary bundle fabric &mdash;
+      under <em>light-time you cannot negotiate with.</em>
+    </p>
+
+    <p class="lede-mono">
+      A two-strand fabric over Bundle Protocol v7. <b>Aletheia</b> carries
+      per-bundle cryptographically-anchored provenance; <b>Civium</b> carries graph-based
+      authority and gates revocation, succession, and stale-graph behavior when
+      round-trip light-time exceeds the desired cutover. The benchmark is
+      <b>cryptographically committed before any substrate exists</b> &mdash; preventing
+      benchmark-gaming &mdash; and the spec is built and <b>accepted by falsification</b>
+      against it.
+    </p>
+  </div>
+</section>
+
+<!-- ========== FABRIC ========== -->
+<section id="fabric">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="section-num">01</span>
+      <span class="section-kicker">The Fabric, specified</span>
+    </div>
+    <h2 class="section-title">Two strands around a <em>Bundle Protocol stream.</em></h2>
+    <p class="body">
+      The name is literal: the herald's twin snakes map to <b>Aletheia</b> (provenance)
+      and <b>Civium</b> (authority). Together they wrap a BP7 stream carrying crewed-mission
+      command, telemetry, and advisory traffic across minutes to hours of light-time.
+      Seven hardware-function floors (HF-16 through HF-22) extend the VBX-ISPS substrate.
+    </p>
+
+    <div class="grid">
+      <div class="cell">
+        <div class="cell-name">ALETHEIA</div>
+        <h3 class="cell-title">Hash-chained provenance</h3>
+        <p class="cell-desc">Per-bundle Ed25519 attestation over canonical tuple. AIBOM substrate (OMB M-25-22 compatible).</p>
+        <span class="marker verified"><span class="m-dot"></span>Verified</span>
+      </div>
+      <div class="cell">
+        <div class="cell-name">CIVIUM</div>
+        <h3 class="cell-title">Authority-graph gate</h3>
+        <p class="cell-desc">Inbound 4-check + revocation stream + theoretical-floor binding. RTT-aware succession.</p>
+        <span class="marker verified"><span class="m-dot"></span>Verified</span>
+      </div>
+      <div class="cell">
+        <div class="cell-name">MERCURY</div>
+        <h3 class="cell-title">Bounded-WCET kernel</h3>
+        <p class="cell-desc">5-cycle deterministic subleq enforcement on all latency-critical paths. Lean 4 + TLA+ obligations specified.</p>
+        <span class="marker plausible"><span class="m-dot"></span>Plausible</span>
+      </div>
+      <div class="cell">
+        <div class="cell-name">BP7 + BPSEC</div>
+        <h3 class="cell-title">Open-substrate floor</h3>
+        <p class="cell-desc">RFC 9171 + 9172 + 9173 + HKDF (RFC 5869). ION-DTN + libsodium. No proprietary lock-in.</p>
+        <span class="marker verified"><span class="m-dot"></span>Verified</span>
+      </div>
+      <div class="cell">
+        <div class="cell-name">NONCE-SEEN-SET</div>
+        <h3 class="cell-title">Per-stream T4 partition</h3>
+        <p class="cell-desc">Atomic four-check (signature, lifetime, nonce, prev_hash) under per-authority-stream lock + quota.</p>
+        <span class="marker verified"><span class="m-dot"></span>Verified</span>
+      </div>
+      <div class="cell">
+        <div class="cell-name">SUBSTRATE v0.2</div>
+        <h3 class="cell-title">M0&ndash;M8 build plan</h3>
+        <p class="cell-desc">20 weeks, ~3.25 FTE on Jetson Orin NX (shielded, &le;200 W). Single-fault to dual-fault path locked.</p>
+        <span class="marker spec"><span class="m-dot"></span>Plan only</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== PRINCIPLES ========== -->
+<section id="principles">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="section-num">02</span>
+      <span class="section-kicker">Five things it refuses to fake</span>
+    </div>
+    <h2 class="section-title"><em>Falsification-first,</em> committed before built.</h2>
+    <p class="body">
+      The bench is hash-anchored before any substrate exists. Phase 3 closes 20 attacks
+      across two rounds. When Phase 6 surfaces a substrate defect, the substrate is fixed
+      &mdash; the benchmark is never silently softened. Bench revisions are versioned
+      re-commits with explicit delta justification.
+    </p>
+
+    <div class="principles">
+      <div class="principle">
+        <div class="n">/ 01</div>
+        <h3>Interplanetary RTT is the regime</h3>
+        <p>Caduceus handles revocation, succession, and stale-graph behavior when light-time exceeds the desired authority-decision cutover. Not "DTN with crypto bolted on."</p>
+      </div>
+      <div class="principle">
+        <div class="n">/ 02</div>
+        <h3>Committed before any substrate</h3>
+        <p>caduceus-bench v1.2.1 is SHA-256 anchored on the Aletheia chain as <code>0fe3b32d&hellip;a528f874</code>. The benchmark is the legislature; the substrate is the candidate.</p>
+      </div>
+      <div class="principle">
+        <div class="n">/ 03</div>
+        <h3>AIBOM-compatible day one</h3>
+        <p>The Aletheia hash-chained provenance ledger is the AIBOM substrate. OMB M-25-22 compatibility is structural, not retrofit.</p>
+      </div>
+      <div class="principle">
+        <div class="n">/ 04</div>
+        <h3>Open-substrate by construction</h3>
+        <p>ION-DTN, libsodium, RFC 9171/9172/9173, HKDF. No proprietary lock-in &mdash; the floor under Caduceus is auditable, replaceable, and federally acquirable.</p>
+      </div>
+      <div class="principle">
+        <div class="n">/ 05</div>
+        <h3>Honest epistemic markers</h3>
+        <p>Every load-bearing claim carries <span style="color:var(--good)">Verified</span>, <span style="color:var(--warn)">Plausible</span>, or <span style="color:var(--crit)">Speculative</span>. Single-fault-tolerant v0.2 to dual-fault v0.3 is named, not papered over.</p>
+      </div>
+      <div class="principle">
+        <div class="n">/ 06</div>
+        <h3>Adversaries before customers</h3>
+        <p>Phase 3 rounds 1 + 2 closed 20 attacks against the bench. Phase 6 has 33 attacks queued against the v0.2 substrate, with Lean 4 + TLA+ composition obligations.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== BLUEPRINT ========== -->
+<section id="blueprint">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="section-num">03</span>
+      <span class="section-kicker">The instrument &middot; engineering blueprint</span>
+    </div>
+    <h2 class="section-title">Bundle in, <em>signed authority decision</em> out.</h2>
+    <p class="body">
+      Seven hardware-function floors extend the existing VBX-ISPS HF-1 through HF-15 stack.
+      Every inbound bundle clears the 4-check at HF-17 before the Civium graph gates it;
+      every outbound bundle is Ed25519-attested at HF-16 over the canonical tuple. Mercury
+      enforces deterministic WCET at HF-20.
+    </p>
+
+    <div class="layer-strip">
+      <div class="layer">
+        <div class="ord">STRAND 01 &middot; PROVENANCE</div>
+        <div class="kind">Aletheia</div>
+        <div class="what">Hash-chained per-bundle ledger, Ed25519 over canonical tuple, AIBOM-shaped, replay-verifiable end-to-end.</div>
+      </div>
+      <div class="layer">
+        <div class="ord">STRAND 02 &middot; AUTHORITY</div>
+        <div class="kind">Civium</div>
+        <div class="what">Authority-graph gate, revocation stream, succession under RTT, theoretical-floor binding, ACI drift monitor.</div>
+      </div>
+      <div class="layer">
+        <div class="ord">SPINE &middot; TRANSPORT</div>
+        <div class="kind">BP7 + BPSec</div>
+        <div class="what">RFC 9171 + 9172 + 9173 + HKDF (RFC 5869). ION-DTN substrate. Mercury bounds WCET deterministically.</div>
+      </div>
+    </div>
+
+    <div class="drawings">
+      <figure class="drawing">
+        <div class="drawing-head">
+          <span class="dwg">DWG CADUCEUS-001</span>
+          <span class="sep">/</span>
+          <span>VBX-CADUCEUS &middot; system architecture</span>
+          <span class="sep">/</span>
+          <span>v0.1 &middot; rev A</span>
+          <span class="view">View A &mdash; Two-strand bundle fabric, HF-16&ndash;22 floors</span>
+        </div>
+        <a href="assets/caduceus_blueprint_001.png" target="_blank" rel="noopener">
+          <img src="assets/caduceus_blueprint_001.png" alt="Caduceus system architecture &mdash; Aletheia provenance strand and Civium authority strand wrapping a BP7 + BPSec bundle stream; HF-16 through HF-22 hardware-function floors." loading="lazy">
+        </a>
+        <div class="drawing-foot">
+          The two-strand wrap around a BP7 stream &mdash; Aletheia (provenance) and Civium
+          (authority) &mdash; with the HF-16 through HF-22 floors mapped onto the existing
+          VBX-ISPS hardware-function stack.
+          <span style="color:var(--ink-faint)">&nbsp;//&nbsp;</span>
+          <a href="assets/caduceus_blueprint_001.png" target="_blank" rel="noopener">Open full resolution &rarr;</a>
+        </div>
+      </figure>
+
+      <figure class="drawing">
+        <div class="drawing-head">
+          <span class="dwg">DWG CADUCEUS-002</span>
+          <span class="sep">/</span>
+          <span>VBX-CADUCEUS &middot; deployment topology</span>
+          <span class="sep">/</span>
+          <span>v0.1 &middot; rev A</span>
+          <span class="view">View A &mdash; Interplanetary RTT, relay, ground</span>
+        </div>
+        <a href="assets/caduceus_blueprint_002.png" target="_blank" rel="noopener">
+          <img src="assets/caduceus_blueprint_002.png" alt="Caduceus deployment topology &mdash; crewed-mission node, relay node, and ground node with light-time annotation, revocation stream, and AIBOM-shaped ledger replication." loading="lazy">
+        </a>
+        <div class="drawing-foot">
+          Deployment topology across the interplanetary RTT regime &mdash; crewed-mission node,
+          relay node, and ground node &mdash; with revocation stream, succession behavior, and
+          AIBOM-shaped ledger replication paths.
+          <span style="color:var(--ink-faint)">&nbsp;//&nbsp;</span>
+          <a href="assets/caduceus_blueprint_002.png" target="_blank" rel="noopener">Open full resolution &rarr;</a>
+        </div>
+      </figure>
+    </div>
+
+    <pre class="flow">     inbound bundle (BP7)
+          |
+          v
+     <span class="hl">[ HF-17 ]</span>      inbound 4-check &mdash; signature &middot; lifetime &middot; nonce-not-seen &middot; prev_hash
+                    (atomic, per-authority-stream lock, T1 + T2 + T3 + T6 + T7)
+          |
+          v
+     <span class="hl">[ Civium gate ]</span> authority-graph + revocation stream
+          |
+          +--&gt; <span class="accent">GRAPH_CURRENT</span>      --&gt; admit  &mdash; route to application
+          |                                       |
+          +--&gt; <span class="accent">GRAPH_STALE_BOUND</span>  --&gt; admit  &mdash; bound by T7 succession window
+          |                                       |
+          +--&gt; <span class="accent">REVOKED / STALE</span>    --&gt; drop   &mdash; logged with reason
+                                                  |
+          |                                       v
+          v                                  <span class="hl">[ HF-18 ]</span>  ACI drift monitor &middot; theoretical-floor binding
+     <span class="hl">[ HF-22 ]</span>      F4 frame-context interlock + root-cause clustering + audit log
+          |
+          v
+     <span class="hl">[ HF-21 ]</span>      T4 nonce-seen-set per-stream partition + quota
+          |
+          v
+     <span class="hl">[ HF-19 ]</span>      URN parse + Caduceus-BodyID v1.0 + dual-version window  (F1, F2)
+          |
+          v
+     <span class="hl">[ HF-20 ]</span>      Mercury-bounded WCET enforcement (5-cycle deterministic)
+          |
+          v
+     <span class="hl">[ HF-16 ]</span>      outbound attestation &mdash; Ed25519 over canonical tuple  (T1)
+          |
+          v
+     <span class="good">[ Aletheia ]</span>   append-only hash-chained ledger
+                    every bundle attempt &mdash; signed, replay-verifiable, AIBOM-shaped</pre>
+  </div>
+</section>
+
+<!-- ========== PROVENANCE ========== -->
+<section id="provenance">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="section-num">04</span>
+      <span class="section-kicker">Provenance you can recompute</span>
+    </div>
+    <h2 class="section-title">Frozen benchmark, <em>chained spec.</em></h2>
+    <p class="body">
+      caduceus-bench v1.2.1 was cryptographically committed before the v0.2 substrate exists.
+      Any byte-level change to the manifest &mdash; trailing newlines, line-ending normalization,
+      whitespace &mdash; produces a different hash and invalidates this commit prep. That is the
+      feature, not the friction.
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <tbody>
+          <tr><td class="k">Benchmark</td><td class="v">caduceus-bench v1.2.1 (CADUCEUS-004)</td></tr>
+          <tr><td class="k">Manifest file</td><td class="v">Caduceus_bench_v1_2_1_Specification.md</td></tr>
+          <tr><td class="k">Byte count (UTF-8)</td><td class="v">20,379</td></tr>
+          <tr><td class="k">Manifest SHA-256</td><td class="hash">0fe3b32db5522db65dda8dbc46b1aa9fcc40c418a21cc8abb2df7340a528f874</td></tr>
+          <tr><td class="k">Ledger entry</td><td class="v">#0004 &middot; commit pending (PPA sequencing)</td></tr>
+          <tr><td class="k">Predecessor</td><td class="v">LEDGER #0003 &middot; VBX-ISPS substrate v0.1</td></tr>
+          <tr><td class="k">Signing algorithm</td><td class="v">Ed25519 &middot; visionblox-release-key-v1</td></tr>
+          <tr><td class="k">Canonicalization</td><td class="v">RFC 8785 JCS</td></tr>
+          <tr><td class="k">Adversarial sweep</td><td class="v">20 / 20 attacks closed across 2 rounds</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="verify-head">// Verify it yourself</div>
+    <pre>$ git clone https://github.com/khaaliswooden-max/CADUCEUS-1.git
+$ cd CADUCEUS-1
+$ sha256sum Caduceus_bench_v1_2_1_Specification.md
+# expected:
+# 0fe3b32db5522db65dda8dbc46b1aa9fcc40c418a21cc8abb2df7340a528f874  Caduceus_bench_v1_2_1_Specification.md</pre>
+  </div>
+</section>
+
+<!-- ========== STATUS ========== -->
+<section id="status">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="section-num">05</span>
+      <span class="section-kicker">What is true, and what is not yet</span>
+    </div>
+    <h2 class="section-title">Bench locked. Substrate <em>planned, not built.</em></h2>
+    <p class="body">
+      This repository is a <b>specification, plan, and methodology</b> artifact, not a
+      substrate codebase. The v0.2 substrate build is planned in CADUCEUS-005 (M0&ndash;M8,
+      20 weeks, ~3.25 FTE) but has not been executed. Markers below are bound to the
+      LEDGER #0004 commit-prep pass.
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Component</th><th>Status</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="v">caduceus-bench v1.2.1</td><td><span class="stat pass">Locked</span></td><td>SHA-256 frozen; LEDGER #0004 commit awaiting PPA sequencing.</td></tr>
+          <tr><td class="v">Phase 3 adversarial sweeps</td><td><span class="stat pass">Closed</span></td><td>20 attacks closed across 2 rounds (v1.0 &rarr; v1.1 &rarr; v1.2.1).</td></tr>
+          <tr><td class="v">Provisional patents</td><td><span class="stat caveat">Drafting</span></td><td>3 targets ready for USPTO-registered practitioner (CADUCEUS-IP-*).</td></tr>
+          <tr><td class="v">IEEE paper</td><td><span class="stat pass">Drafted</span></td><td>IEEEtran LaTeX, 30+ references, arXiv preprint companion ready.</td></tr>
+          <tr><td class="v">v0.2 substrate</td><td><span class="stat plan">Plan</span></td><td>M0&ndash;M8 locked in CADUCEUS-005; ~3.25 FTE; Jetson Orin NX (&le;200 W).</td></tr>
+          <tr><td class="v">Formal methods (Lean 4 + TLA+)</td><td><span class="stat plan">Plan</span></td><td>Composition obligations specified in CADUCEUS-006.</td></tr>
+          <tr><td class="v">Phase 6 attack sweep</td><td><span class="stat plan">Queued</span></td><td>33-attack catalog ready for substrate M5+ (CADUCEUS-007).</td></tr>
+          <tr><td class="v">CMMC L2 self-assessment</td><td><span class="stat caveat">In motion</span></td><td>Framework complete; Visionblox attestation underway.</td></tr>
+          <tr><td class="v">Federal capture</td><td><span class="stat caveat">Prioritized</span></td><td>8 channels &mdash; NSTXL, NASA SBIR, DIU, SDA, AFRL OTAFI, AFWERX.</td></tr>
+          <tr><td class="v">Aletheia v0.3 chain extension</td><td><span class="stat plan">Spec</span></td><td>~2&ndash;3 person-weeks to implement once v0.2 builds.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="body" style="margin-top: 32px;">
+      <b>Next work item:</b> execute LEDGER #0004 commit after PPA filings clear, then begin
+      v0.2 substrate M0 on Jetson Orin NX. After that: Phase 6 vertical-integration attacks
+      against the substrate, Lean 4 mechanization of the Mercury subleq emulator, and the
+      single-fault &rarr; dual-fault tolerance path to v0.3.
+    </p>
+  </div>
+</section>
+
+<!-- ========== FOOTER ========== -->
+<footer>
+  <div class="wrap">
+    <div class="crest">Visionblox <span style="color:var(--ink-dim)">&middot;</span> Zuup Innovation Lab</div>
+    <p>A. Khaalis Wooden, Sr. &mdash; principal investigator. Aldrich K. Wooden, Sr., MBA; MSIT Candidate, Southern New Hampshire University.</p>
+    <p>Methodology: ZCS-6 falsification-first (Phase 4 complete). Apache 2.0. Authorship of record retained by the principal investigator; AI assistance disclosed in the README acknowledgments.</p>
+    <div class="footer-links">
+      <a href="https://github.com/khaaliswooden-max/CADUCEUS-1">Repository</a>
+      <a href="https://github.com/khaaliswooden-max/CADUCEUS-1/blob/main/README.md">Readme</a>
+      <a href="https://github.com/khaaliswooden-max/CADUCEUS-1/blob/main/Caduceus_bench_v1_2_1_Specification.md">Bench v1.2.1</a>
+      <a href="https://github.com/khaaliswooden-max/CADUCEUS-1/blob/main/Caduceus_LEDGER_0004_Commit_Prep.md">Ledger #0004</a>
+      <a href="https://github.com/khaaliswooden-max/CADUCEUS-1/blob/main/Caduceus_IEEE_Paper.tex">IEEE paper</a>
+      <a href="https://github.com/khaaliswooden-max/PHRONESIS-1">Phronesis 1</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
