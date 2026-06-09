@@ -1,0 +1,291 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{listings}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Caduceus: A Compliance-Graded Bundle Fabric \\for Interplanetary Authority Propagation}
+
+\author{
+\IEEEauthorblockN{Aldrich K. Wooden, Sr., MBA}
+\IEEEauthorblockA{
+\textit{Graduate Student, MSIT Program}\\
+\textit{Southern New Hampshire University}\\
+\textit{Visionblox LLC / Zuup Innovation Lab}\\
+aldrich.wooden@snhu.edu}
+}
+
+\maketitle
+
+\begin{abstract}
+Interplanetary missions face a propagation-window failure mode unique to communication channels where round-trip light-time exceeds the desired authority-decision cutover time. Existing public-key infrastructure (PKI) assumes sub-second revocation propagation; standardized space-data link security mechanisms use pre-shared symmetric keys without graph-authority semantics. Recent work on PKI for interplanetary networks demonstrates that terrestrial concepts can be adapted but does not address compliance-graded authority decisions with explicit accommodation for propagation windows of minutes to hours.
+
+We present Caduceus, a compliance-graded delay-tolerant bundle fabric for interplanetary authority propagation. Caduceus sits above Bundle Protocol v7 (RFC 9171) and the Bundle Protocol Security extensions (RFC 9172), providing per-bundle Aletheia-class cryptographic provenance, Civium-graph authority gating, drift-aware link-integrity monitoring, frame-disambiguated timestamps, and a crew-attestation peer model. We define \texttt{caduceus-bench v1.2.1}, a falsifiable benchmark of seventeen normative assertions across four layers, cryptographically committed via the ZCS-6 ordering discipline before any substrate implementation. We document a two-round adversarial sweep surfacing twenty attacks against the bench, including two interplanetary-specific failure modes (authority-graph staleness across round-trip-time, and namespace-registry transitions at light-time distance) not addressable by terrestrial mechanisms. We outline a substrate prototype plan, a formal-methods composition with the Mercury Subleq kernel, and honest scope statements on what the bench does and does not measure.
+\end{abstract}
+
+\begin{IEEEkeywords}
+delay-tolerant networking, interplanetary internet, public-key infrastructure, compliance-graded systems, formal methods, ZCS-6, bundle protocol, authority propagation
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+The proposed Interplanetary Internet, originally framed in early 2000s NASA-led work and codified in IETF and CCSDS standards \cite{cerf2007dtn,burleigh2003dtn,burleigh2003ipn}, addresses delay and disruption tolerance through a Bundle Protocol architecture that uses store-and-forward delivery in place of end-to-end session assumptions. Bundle Protocol version 7 \cite{rfc9171} and its security extensions \cite{rfc9172,rfc9173} provide the standardized substrate for interoperable interplanetary networking.
+
+What these standards do not provide is a compliance-graded authority decision layer suitable for crewed missions in which authority assertions must be propagated across communication channels whose round-trip light-time exceeds the desired authority-decision cutover time. Earth-to-Mars one-way light-time varies from approximately 3 to 22 minutes; round-trip times accordingly range from approximately 6 to 44 minutes. Outer-solar-system missions experience round-trip times of multiple hours. During these propagation windows, a revoked authority remains locally trusted at any compute node that has not yet received the revocation, and there is no physical mechanism by which the revocation can arrive faster.
+
+Existing approaches address this gap incompletely. CCSDS Space Data Link Security uses pre-shared symmetric keys without authority-graph semantics. Conventional X.509 Certificate Revocation Lists \cite{rfc5280} and the Online Certificate Status Protocol \cite{rfc6960} assume sub-second propagation. Kerberos uses time-bounded tickets \cite{rfc4120} with the assumption, formalized by Burrows, Abadi, and Needham \cite{ban1989}, that the time required for authority assertions to propagate is small relative to the lifetimes of those assertions. Recent work on PKI for interplanetary networks (KeySpace) demonstrates that terrestrial PKI mechanisms including OCSP variants can be effective in such networks \cite{smailes2024keyspace}, but does not address compliance-graded authority decisions, succession-implies-revocation defaults, or namespace-registry transitions across light-time distances.
+
+We make four contributions:
+
+\begin{enumerate}
+    \item \textbf{Caduceus architecture}: a compliance-graded delay-tolerant bundle fabric sitting above BP7+BPSec, providing per-bundle Aletheia-class cryptographic provenance, Civium-graph authority gating, drift-aware link-integrity monitoring (ACI), frame-disambiguated timestamps via a versioned URN namespace, and a crew-attestation peer model.
+
+    \item \textbf{caduceus-bench v1.2.1}: a cryptographically-committed falsifiable benchmark of seventeen normative assertions across four layers (Physical, Bundle, Trust, Frame), produced via the ZCS-6 ordering discipline in which the benchmark is committed before any substrate implementation, preventing benchmark-gaming and Goodhart's-Law failure modes.
+
+    \item \textbf{Adversarial sweep}: two-round Phase 3 adversarial analysis surfacing twenty attacks, including two interplanetary-specific failure modes that do not appear in terrestrial deployments. We document each attack, its targeted assertions, the closure mechanism, and the resulting benchmark revisions.
+
+    \item \textbf{Substrate plan and formal-methods composition}: a substrate prototype plan implementable on existing spacecraft compute hardware (NVIDIA Jetson Orin class), with a formal-methods composition strategy using Lean 4 \cite{moura2021lean} and TLA+ \cite{lamport2002tla} for properties amenable to mechanical proof, and explicit honest-scope statements on properties that require empirical or engineering review instead.
+\end{enumerate}
+
+The paper is organized as follows. Section~\ref{sec:related} reviews related work. Section~\ref{sec:arch} presents the Caduceus architecture. Section~\ref{sec:bench} presents caduceus-bench v1.2.1. Section~\ref{sec:adversarial} reports the adversarial sweep. Section~\ref{sec:substrate} sketches the substrate prototype. Section~\ref{sec:formal} describes the formal-methods composition. Section~\ref{sec:discussion} discusses limitations and open questions. Section~\ref{sec:conclusion} concludes.
+
+\section{Related Work}\label{sec:related}
+
+\subsection{Delay-tolerant networking foundations}
+
+The Delay-Tolerant Networking architecture \cite{cerf2007dtn} generalized earlier NASA work on the Interplanetary Internet \cite{burleigh2003ipn,burleigh2003dtn} to a broader class of networks suffering from frequent partitions and high transmission latencies. Bundle Protocol v7 \cite{rfc9171} provides the wire-format standard for DTN, with Bundle Protocol Security \cite{rfc9172,rfc9173} adding integrity and confidentiality, and TCP Convergence Layer \cite{rfc9174} addressing transport. The RFC 9713 update \cite{rfc9713} extends BP7 with additional clarifications.
+
+Caduceus uses BP7+BPSec as its substrate. The benchmark assertions are layered above the BP7+BPSec wire formats and do not modify them.
+
+\subsection{Public-key infrastructure for delay-tolerant networks}
+
+Bhutta, Cruickshank, and Sun \cite{bhutta2017dtn} surveyed PKI validation and revocation for DTNs, identifying the central tension between traditional X.509 revocation mechanisms (which assume low-latency CA access) and DTN connectivity characteristics. Luo, Hubaux, and Eugster proposed DICTATE \cite{luo2005dictate}, a distributed certification authority with probabilistic freshness for ad hoc networks. Koisser et al. \cite{koisser2022trusat} introduced TruSat, addressing cyber-trust in collaborative spacecraft networks.
+
+Most recently and most relevantly, Smailes, K\"ohler, Birnbach, Strohmeier, and Martinovic \cite{smailes2024keyspace} presented KeySpace, demonstrating that terrestrial PKI techniques can be adapted for interplanetary networks through novel configurations including ``OCSP Hybrid'' and the use of relay nodes as firewalls. Caduceus is complementary to KeySpace: KeySpace addresses the question of which PKI mechanism best suits interplanetary deployment; Caduceus addresses what compliance-graded authority decision layer should sit above that PKI substrate.
+
+\subsection{Time-bound authority assertions}
+
+Kerberos \cite{rfc4120} uses TTL-bounded tickets as its primary revocation mechanism, an approach for which the BAN logic \cite{ban1989} provides theoretical foundation. Cooper proposed delta-CRLs \cite{cooper2000deltacrls} to reduce the bandwidth overhead of revocation list distribution. These mechanisms assume terrestrial propagation latencies; their interplanetary adaptation requires the additional defenses Caduceus introduces in T7 (succession-implies-revocation, stale-graph defaults, priority-lane revocation streams).
+
+\subsection{Formal verification of distributed protocols}
+
+Lean 4 \cite{moura2021lean} and TLA+ \cite{lamport2002tla} are established proof and model-checking systems for distributed protocols. Recent work on formal verification of policy enforcement \cite{hu2024picachv} demonstrates the viability of mechanically-verified data-use policies. Caduceus composes its formal-methods obligations with the Mercury Subleq kernel \cite{wooden2025mercury}, which provides a deterministic execution substrate grounded in Lloyd's bounds on ultimate physical computation \cite{lloyd2000ultimate}.
+
+\subsection{Compliance-graded systems}
+
+Compliance-graded systems---wherein authority decisions are gated by an explicit authority graph specifying which originator may issue which command class to which receiver in which context---are mature in terrestrial regulated-edge healthcare and financial systems. The OMB M-25-22 \cite{omb2025aibom} guidance on AI Bill of Materials, the NIST SP 800-171 R2 \cite{nist800171} controls for protecting controlled unclassified information, and the CMMC framework are the federal-relevant compliance posture for U.S. deployments. Caduceus is designed to interoperate with these standards through its hash-chained Aletheia provenance ledger, which directly supports AIBOM serialization.
+
+\section{Caduceus Architecture}\label{sec:arch}
+
+\subsection{Six-attribute whitespace map}
+
+Caduceus targets a specific gap in the existing space-communications stack. Table~\ref{tab:whitespace} summarizes the six attributes that Caduceus combines, none of which is novel in isolation but whose combination addresses a category not previously claimed.
+
+\begin{table}[h]
+\caption{Six-attribute whitespace map}
+\label{tab:whitespace}
+\centering
+\small
+\begin{tabular}{p{2.5cm}p{2.5cm}p{2.5cm}}
+\toprule
+\textbf{Attribute} & \textbf{Existing substrate} & \textbf{Caduceus closure} \\
+\midrule
+Per-bundle provenance & CCSDS SDLS (symmetric pre-shared) & Per-event Ed25519 + hash-chained Aletheia ledger \\
+Authority gating & SDLS-EP (role-agnostic) & Civium graph-based decision per bundle, class, body, frame \\
+Drift-aware link confidence & None & ACI conformal bands on BER, SNR, RTT \\
+Frame-disambiguated time & TAI-rooted, frame-agnostic & (TAI, vbx-body-URN) tuple per bundle \\
+WCET-bounded safety path & OS best-effort & Mercury kernel deterministic upper bound \\
+Crew-attestation peer & Single-point-of-trust & EPHEMERIS independent verification \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Layered stack}
+
+Figure~\ref{fig:stack} shows the Caduceus layered stack on PHRONESIS-side compute. The stack consists of seven hardware-function (HF) floors, numbered to extend the existing VBX-ISPS \cite{wooden2025vbxisps} blueprint floors HF-1 through HF-15.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+    layer/.style={rectangle, draw, minimum width=6.5cm, minimum height=0.6cm, font=\small},
+    node distance=0.1cm
+]
+\node[layer] (l8) {HF-22: Frame-context interlock (F4)};
+\node[layer, below=of l8] (l7) {HF-21: Nonce-seen-set management (T4)};
+\node[layer, below=of l7] (l6) {HF-16/17/19: Attestation, gate, parsing};
+\node[layer, below=of l6] (l5) {HF-18: ACI drift monitor (T5)};
+\node[layer, below=of l5] (l4) {HF-20: Mercury-bounded WCET};
+\node[layer, below=of l4] (l3) {BP7 (RFC 9171) + BPSec (RFC 9172)};
+\node[layer, below=of l3] (l2) {Civium / MVCI / Aletheia / Mercury};
+\node[layer, below=of l2] (l1) {Jetson Orin NX (shielded, $\leq$ 200 W)};
+\end{tikzpicture}
+\caption{Caduceus layered stack on PHRONESIS-side compute.}
+\label{fig:stack}
+\end{figure}
+
+The EPHEMERIS-side peer runs a thin verification layer paired over UWB or BLE, providing crew-attestation as an independent trust path.
+
+\subsection{Mass and power envelope}
+
+Caduceus operates within a strict envelope locked at the bench commit: 4.0 kg total comm subsystem mass, 50 W steady-state power, 100 W peak transmit power. These caps are exit criteria for partner negotiation, not opening positions. The v0.1 software-only build on existing S-band + UHF hardware passes cleanly (zero kg delta, approximately 10--15 W compute delta on Orin NX). Optical-terminal addition is a v0.3 stretch requiring partner integration under the cap.
+
+\section{caduceus-bench v1.2.1}\label{sec:bench}
+
+\subsection{Specification structure}
+
+caduceus-bench v1.2.1 comprises seventeen normative assertions across four layers (Physical, Bundle, Trust, Frame), a Visionblox-extended body-identifier namespace (Caduceus-BodyID v1.0), and a normative conservative-defaults table covering payload classes under stale authority graphs. The full assertion enumeration appears in the consolidated benchmark document \cite{caduceus2026bench}; key assertions are summarized in Table~\ref{tab:bench}.
+
+\begin{table}[h]
+\caption{caduceus-bench v1.2.1 key assertions}
+\label{tab:bench}
+\centering
+\small
+\begin{tabular}{p{0.7cm}p{6.0cm}}
+\toprule
+\textbf{ID} & \textbf{Assertion} \\
+\midrule
+T1 & Constant-time Ed25519 signature over canonical tuple; atomic 4-check verification \\
+T2 & Civium authority graph + time-bound validity; both must pass \\
+T4 & Per-stream nonce-set partitioning with bounded quotas \\
+T5 & ACI bandwidth bounded above by mission policy, below by max(empirical, theoretical) floor \\
+T7 & Revocation propagation via priority-lane stream; succession-implies-revocation rule \\
+F1 & (TAI, vbx-body-URN) tuple per bundle; envelope [1972, 2101) \\
+F4 & Root-cause clustering of confirmation requests; hard rate limit K=6/crew/hour \\
+B2 & BPSec fragmentation with HKDF-derived keys from Aletheia parent \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{ZCS-6 commit discipline}
+
+The benchmark is cryptographically committed before any substrate implementation. The commit sequence:
+
+\begin{enumerate}
+    \item SHA-256 hash of the canonical UTF-8 byte sequence.
+    \item Ed25519 signature with the Visionblox release key (constant-time implementation).
+    \item Append to the Aletheia chain as a numbered ledger entry.
+    \item OpenTimestamps proof on the entry.
+    \item Public publication of the manifest hash + signature.
+\end{enumerate}
+
+This ordering---benchmark commit before substrate implementation---prevents Goodhart's-Law failure modes wherein a benchmark is silently revised to accommodate implementation difficulties. Backward edges into Phase 2 are honest and acceptable but require versioned re-commits with delta justification records. The benchmark version history is itself an audit artifact.
+
+\subsection{Caduceus-BodyID v1.0 namespace}
+
+The frame layer requires every bundle to carry a (TAI, vbx-body-URN) tuple. The URN scheme is:
+
+\begin{center}
+\texttt{vbx-body:v1.0:<path>?frame=<frame\_id>}
+\end{center}
+
+with explicit EBNF grammar enforcement, NFC + ASCII-only canonical form, strict registry match (no partial or fuzzy matching), and atomic transitions on the Aletheia ledger. Example URNs include \texttt{vbx-body:v1.0:mars/jezero?frame=MarsMOLA} and \texttt{vbx-body:v1.0:saturn?frame=UNDEFINED} (the latter explicitly acknowledges Saturn's rotational frame ambiguity).
+
+The namespace is versioned via the URN scheme itself, supporting dual-version retention windows during transitions across long-RTT links---a mechanism we discuss further in Section~\ref{sec:adversarial}.
+
+\section{Adversarial Analysis}\label{sec:adversarial}
+
+\subsection{Two-round Phase 3 sweep}
+
+Two-round adversarial sweep methodology: Phase 3 attacks are proposed against the benchmark, not against any implementation. Defenses are evaluated at the assertion level. Attacks that pass force benchmark revision (versioned re-commit). Attacks that fail confirm the assertion holds.
+
+Round 1 evaluated eight planned attacks and surfaced four additional attacks during the sweep itself, for twelve attacks total against bench v1.0. Six gaps led to revision to v1.1.
+
+Round 2 evaluated all twelve attacks plus eight new attacks against the new and revised v1.1 assertions, for twenty attacks total. All previous attacks were closed in v1.1; the eight new attacks were tightening-class (assertion precision, not architectural). They led to revision to v1.2, then to v1.2.1 after a diversified-internal probe.
+
+The final benchmark v1.2.1 closes all twenty attacks. Table~\ref{tab:attacks} summarizes the most consequential findings.
+
+\begin{table}[h]
+\caption{Selected attacks and closure mechanisms}
+\label{tab:attacks}
+\centering
+\small
+\begin{tabular}{p{0.4cm}p{3.0cm}p{3.4cm}}
+\toprule
+\textbf{\#} & \textbf{Attack} & \textbf{Closure} \\
+\midrule
+1 & Replay across long RTT & T1 + T4 \\
+2 & Frame confusion (broadened) & F2 + F4 \\
+3 & Bundle fragmentation under DTN & B2 (BPSec + HKDF) \\
+5 & ACI thrashing + slow-drift & T5 (theoretical floor) \\
+\textbf{10} & \textbf{Authority-graph staleness across RTT} & \textbf{T2 + T7 + \S 3.6 defaults} \\
+22 & Authority succession ambiguity & T7 succession-implies-revocation \\
+\textbf{27} & \textbf{Registry transition at light-time} & \textbf{\S 3.5 dual-version window} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Two interplanetary-specific findings}
+
+Attacks 10 and 27 do not surface in terrestrial deployments. They are direct consequences of round-trip light-time exceeding the desired authority-decision cutover time.
+
+\textbf{Attack 10 (authority-graph staleness)}: A compromised authority knowing it is about to be revoked exploits the propagation window between revocation issuance and revocation arrival at remote compute nodes. Closure requires time-bound authority assertions (T2), a dedicated revocation stream on a priority lane (T7), a succession-implies-revocation default rule, and enumerated conservative defaults per payload class under stale authority graphs.
+
+\textbf{Attack 27 (registry transition at light-time)}: Namespace-registry transitions cannot be atomic across interplanetary RTT, creating asymmetric version-acceptance during propagation. Closure requires versioning the URN scheme itself, dual-version retention windows sized as $2 \times RTT_{max}$, and a priority-lane transition-announcement bundle class.
+
+Both findings emerged through the sweep process and were not anticipated in the original whitespace map. They are the strongest novelty claims for both intellectual property protection and academic contribution.
+
+\section{Substrate Prototype Plan}\label{sec:substrate}
+
+A v0.2 substrate prototype implementing caduceus-bench v1.2.1 is planned at module granularity through seven hardware-function floors (HF-16 through HF-22). The substrate is implementable in Rust on existing NVIDIA Jetson Orin NX class compute (16 GB, shielded, $\leq$ 200 W) with the existing HF-11 (S-band + UHF) physical-layer transceiver. EPHEMERIS-side peer firmware runs on an ARM Cortex-M class MCU.
+
+Reference dependencies include ION-DTN (NASA-maintained BP7 reference), libsodium (constant-time Ed25519), and HKDF \cite{rfc5869} for BPSec session-key derivation per assertion B2. The prototype is single-fault-tolerant; dual-fault-tolerance for crewed deployment requires v0.3 substrate work (dual-peer EPHEMERIS attestation, triple-redundant Aletheia chain storage, redundant authority-graph storage).
+
+Estimated build effort: approximately 20 weeks for a team of 3.25 FTE, generating approximately 332 tests across six categories (per-assertion units, attack-class regression, WCET budget verification, constant-time crypto, formal-methods verification, end-to-end mission simulation).
+
+\section{Formal-Methods Composition}\label{sec:formal}
+
+Six theorems are mechanically provable in Lean 4 \cite{moura2021lean}, composing with the Mercury Subleq kernel's deterministic execution proofs: T1 atomicity (mutual exclusion theorem), T3 fail-safe transitions (state-machine reachability), T7 succession-implies-revocation (temporal-logic property), F4 hard rate limit (counter invariant), \S 3.6 precedence ordering (relational property), and T6 ingress-validity ordering (pipeline-ordering property). Estimated effort: four person-months.
+
+Four properties are tractable for TLA+ \cite{lamport2002tla} model checking: T4 per-stream quota behavior under arbitrary stream activity, T5 floor convergence under adversarial calibration, F2+F4 interaction under non-cooperative crew, and \S 3.5 dual-version retention window correctness under unbounded RTT skew. Estimated effort: 2.5 person-months.
+
+Three categories of property are explicitly out-of-scope for formalization: crew cognitive load (empirical psychology), theoretical-floor derivation from link physics, and adversarial behavior model completeness. These require empirical validation studies or engineering review rather than formal proof.
+
+\section{Discussion}\label{sec:discussion}
+
+\subsection{Limitations}
+
+caduceus-bench v1.2.1 is intentionally narrow. It measures compliance-graded correctness for a specific class of interplanetary authority systems; it does not measure performance, throughput, scalability, or commercial viability. The benchmark is pass-or-fail with no partial credit, by design---a substrate either implements the assertions correctly or does not, mirroring the fail-safe-or-correct semantics that the underlying system requires.
+
+The benchmark is single-fault-tolerant. Dual-fault-tolerance for crewed deployment is a future bench variant. Ground master-key custody, EPHEMERIS firmware integrity, and PHRONESIS Secure Element tamper resistance are explicitly out-of-bench scope; they require operational, supply-chain, and hardware assurance practices distinct from bench compliance.
+
+\subsection{Open questions}
+
+Several questions remain open for future work:
+
+\begin{itemize}
+    \item \textbf{Quantum-secured authority propagation}: ground-to-satellite quantum-state teleportation has been demonstrated at 1200 km \cite{yin2017micius}; extension to interplanetary distances would enable quantum-key distribution for the Aletheia chain, a v3.x research horizon.
+    \item \textbf{Empirical K calibration}: the F4 hard rate limit K=6 confirmations/crew/hour is a default; validation against EVA cognitive-load data is required.
+    \item \textbf{Cross-agency namespace federation}: Caduceus-BodyID v1.0 is Visionblox-extended; broader adoption requires community RFC processes with NASA, ESA, JAXA, and others.
+    \item \textbf{Optical-terminal integration under the budget cap}: 4.0 kg cap forces compressed/integrated partner solutions; no commercial product currently meets this constraint inclusive of full Caduceus stack.
+\end{itemize}
+
+\section{Conclusion}\label{sec:conclusion}
+
+Caduceus addresses a category of authority-propagation failure modes that emerges only in communication channels where round-trip light-time exceeds the desired authority-decision cutover time. We presented the architecture, the cryptographically-committed benchmark caduceus-bench v1.2.1, the adversarial sweep that produced it, a substrate prototype plan, and a formal-methods composition strategy.
+
+Two interplanetary-specific findings---authority-graph staleness across round-trip-time, and namespace-registry transitions at light-time distance---are not addressable by terrestrial mechanisms and represent the strongest novelty claims of the work. The ZCS-6 commit discipline ensures that benchmark and substrate evolve in falsification-first order, preventing benchmark-gaming and supporting honest revision through versioned re-commits.
+
+caduceus-bench v1.2.1 is committed via Aletheia LEDGER \#0004 (pending), SHA-256 \texttt{0fe3b32db5522db6...}. The substrate prototype, formal-methods proofs, and federal-capture engagements are planned post-commit.
+
+\section*{Acknowledgments}
+
+The author thanks the open-source contributors to ION-DTN, libsodium, Lean 4, mathlib4, and TLA+ for the foundational tooling. The KeySpace authors at the University of Oxford and armasuisse Science + Technology provided the closest adjacent prior art and demonstrated that PKI in interplanetary networks is a tractable research area. The VBX-ISPS substrate v0.1 work informed the methodology applied here.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}
